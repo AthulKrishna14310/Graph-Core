@@ -1,6 +1,7 @@
 <resources>
-    <string name="app_name">MyGraphView</string>
+    <string name="app_name">Graph Core</string>
     <string-array name="Letter">
+        <item>All</item>
         <item>A</item>
         <item>B</item>
         <item>C</item>

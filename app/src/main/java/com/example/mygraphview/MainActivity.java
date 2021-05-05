@@ -1,13 +1,16 @@
 package com.example.mygraphview;
-
 import androidx.appcompat.app.AppCompatActivity;
-
 import android.graphics.Color;
 import android.os.Bundle;
+import android.util.Log;
+import android.view.View;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.Spinner;
 
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.jjoe64.graphview.GraphView;
 import com.jjoe64.graphview.GridLabelRenderer;
 import com.jjoe64.graphview.LegendRenderer;
@@ -17,65 +20,162 @@ import com.jjoe64.graphview.series.LineGraphSeries;
 import java.util.ArrayList;
 
 public class MainActivity extends AppCompatActivity {
-    ListView listView;
+    private ListView listView;
+    private Spinner letterSpinner;
+    private Spinner categorySpinner;
+    private GraphView graph;
+    private GridLabelRenderer gridLabel;
+    private FirebaseFirestore firebaseFirestore;
+    private String TAG="Graph";
+    private ArrayList<Attempt>attempts;
+    private String selectedLetter ="All";
+    private String selectedCategory ="Score";
+    private LineGraphSeries<DataPoint> series;
+    private static final int SCORE_TOTAL=100;
+    private  ArrayList<String> arrayList=new ArrayList<>();
+    private ArrayAdapter attemptsAdapter;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        graph=findViewById(R.id.graph);
+        letterSpinner = findViewById(R.id.spinner1);
+        categorySpinner = findViewById(R.id.spinner2);
+        firebaseFirestore = FirebaseFirestore.getInstance();
+        attempts=new ArrayList<>();
+        listView=findViewById(R.id.listview);
+        ArrayAdapter<String> letterAdapter = new ArrayAdapter<String>(MainActivity.this,
+                android.R.layout.simple_list_item_1,
+                getResources().getStringArray(R.array.Letter));
+        letterAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        letterSpinner.setAdapter(letterAdapter);
+        letterSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parentView, View selectedItemView, int position, long id) {
+                selectedLetter=letterSpinner.getSelectedItem().toString();
+                onStart();
+            }
 
+            @Override
+            public void onNothingSelected(AdapterView<?> parentView) {
+            }
 
-        GraphView graph=(GraphView) findViewById(R.id.graph);
+        });
 
-        LineGraphSeries<DataPoint> series =
-                new LineGraphSeries<>();
-        double y=0;
+        ArrayAdapter<String> categoryAdapter = new ArrayAdapter<String>(MainActivity.this,android.R.layout.simple_list_item_1,
+                getResources().getStringArray(R.array.Type));
+        categoryAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        categorySpinner.setAdapter(categoryAdapter);
+        categorySpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parentView, View selectedItemView, int position, long id) {
+                selectedCategory=categorySpinner.getSelectedItem().toString();
+                onStart();
+            }
 
+            @Override
+            public void onNothingSelected(AdapterView<?> parentView) {
 
-        for (int x=0;x<90;x++){
-            y++;
-            series.appendData(new DataPoint(x,y), true,90);
+            }
 
+        });
+
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        attemptsAdapter = new ArrayAdapter(getApplicationContext(),
+                android.R.layout.simple_list_item_1,
+                arrayList);
+        listView.setAdapter(attemptsAdapter);
+        graph.setTitle(selectedCategory+" Graph");
+        graph.setTitleTextSize(32);
+        graph.setCursorMode(true);
+        GridLabelRenderer gridLabel=graph.getGridLabelRenderer();
+        gridLabel.setHorizontalAxisTitle("Attempts");
+        gridLabel.setHorizontalAxisTitleTextSize(24);
+        gridLabel.setVerticalAxisTitle(selectedCategory);
+        gridLabel.setVerticalAxisTitleTextSize(24);
+        graph.removeAllSeries();
+        LineGraphSeries<DataPoint> series = new LineGraphSeries<>();
+        if(selectedCategory.contentEquals("Score")){
+            series.setColor(Color.MAGENTA);
+        } else if(selectedCategory.contentEquals("No of Errors")){
+            series.setColor(Color.RED);
+        }else{
+            series.setColor(Color.BLUE);
         }
-        graph.addSeries(series);
-        series.setColor(Color.RED);
-        series.setTitle("Score");
-
+        series.setTitle(selectedCategory);
         series.setDataPointsRadius(16);
         series.setThickness(8);
         series.setAnimated(true);
-        graph.setTitle("Score Graph");
-        graph.setTitleTextSize(90);
-        graph.setTitleColor(Color.BLUE);
+        firebaseFirestore.collection("Attempts")
+                .get()
+                .addOnCompleteListener(task -> {
+                    if (task.isSuccessful()) {
+                        arrayList.clear();
+                        attempts.clear();
+                        for (QueryDocumentSnapshot document : task.getResult()) {
+                            Attempt attempt=document.toObject(Attempt.class);
+                            if(selectedLetter.contentEquals("All")) {
+                                attempts.add(attempt);
+                                arrayList.add(attempts.size()+" - "+attempt.getAttemptedAt());
+                            }else if(selectedLetter.contentEquals(attempt.getLetter())){
+                                attempts.add(attempt);
+                                arrayList.add(attempts.size()+" - "+attempt.getAttemptedAt());
 
+                            }
+                          }
+                        if(selectedCategory.contentEquals("Score")) {
+                            for (int i = 0; i < attempts.size(); i++) {
+                                series.appendData(
+                                        new DataPoint(i + 1,
+                                                Integer.parseInt(attempts.get(i).getScore())),
+                                        true,
+                                        attempts.size());
+                            }
+                        }else if(selectedCategory.contentEquals("No of Errors")){
+                            for (int i = 0; i < attempts.size(); i++) {
+                                series.appendData(
+                                        new DataPoint(i + 1,
+                                                Integer.parseInt(attempts.get(i).getNe())),
+                                        true,
+                                        attempts.size());
+                            }
+                        }else if(selectedCategory.contentEquals("Time Taken")){
+                            for (int i = 0; i < attempts.size(); i++) {
+                                series.appendData(
+                                        new DataPoint(i + 1,
+                                                Integer.parseInt(String.valueOf(attempts.get(i).getTime().subSequence(0,2)))),
+                                        true,
+                                        attempts.size());
+                            }
+                        }else if(selectedCategory.contentEquals("Speed")){
+                            for (int i = 0; i < attempts.size(); i++) {
+                                series.appendData(
+                                        new DataPoint(i + 1,
+                                                Integer.parseInt(String.valueOf(attempts.get(i).getSpeed().subSequence(0,2)))),
+                                        true,
+                                        attempts.size());
+                            }
+                        }
+                        attemptsAdapter.notifyDataSetChanged();
+                        graph.addSeries(series);
 
-        graph.getLegendRenderer().setVisible(true);
-        graph.getLegendRenderer().setAlign(LegendRenderer.LegendAlign.TOP);
-
-        GridLabelRenderer gridLabel=graph.getGridLabelRenderer();
-        gridLabel.setHorizontalAxisTitle("Date");
-        gridLabel.setHorizontalAxisTitleTextSize(50);
-        gridLabel.setVerticalAxisTitle("Score");
-        gridLabel.setVerticalAxisTitleTextSize(50);
-
-        Spinner mySpinner = (Spinner) findViewById(R.id.spinner1);
-        ArrayAdapter<String> myAdapter = new ArrayAdapter<String>(MainActivity.this,android.R.layout.simple_list_item_1, getResources().getStringArray(R.array.Letter));
-        myAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        mySpinner.setAdapter(myAdapter);
-        Spinner mySpinner2 = (Spinner) findViewById(R.id.spinner2);
-        ArrayAdapter<String> myAdapter2 = new ArrayAdapter<String>(MainActivity.this,android.R.layout.simple_list_item_1, getResources().getStringArray(R.array.Type));
-        myAdapter2.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        mySpinner2.setAdapter(myAdapter2);
-
-        listView=(ListView)findViewById(R.id.listview);
-        ArrayList<String> arrayList=new ArrayList<>();
-
-        arrayList.add("80 12/10/20 2:55");
-        arrayList.add("60 12/10/20 2:55");
-        arrayList.add("40 12/10/20 2:55");
-        arrayList.add("20 12/10/20 2:55");
-        ArrayAdapter arrayAdapter= new ArrayAdapter(this, android.R.layout.simple_list_item_1,arrayList);
-        listView.setAdapter(arrayAdapter);
+                    } else {
+                        showLog("Error getting documents: "+ task.getException());
+                    }
+                });
 
     }
+
+
+    private void showLog(String data){
+        Log.d(TAG, data);
+
+    }
+
+
 
 }

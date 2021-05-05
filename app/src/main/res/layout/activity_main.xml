@@ -14,37 +14,44 @@
         android:layout_marginTop="80dp"
         android:layout_marginLeft="16dp"
         android:layout_marginBottom="16dp"
-        android:layout_toLeftOf="@id/rlAttemps"
         android:layout_marginRight="16dp"
+        android:layout_toLeftOf="@id/listview"
         />
 
-    <androidx.recyclerview.widget.RecyclerView
-        android:layout_width="wrap_content"
-        android:layout_height="match_parent"
-        android:layout_marginBottom="16dp"
-        android:id="@+id/rlAttemps"
-        android:layout_alignParentRight="true"
-        />
+
 
     <Spinner
         android:id="@+id/spinner1"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignParentTop="true"
+        style="@style/Widget.AppCompat.Spinner.Underlined"
         android:layout_centerHorizontal="true"/>
     <Spinner
         android:id="@+id/spinner2"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_toRightOf="@id/spinner1"
+        style="@style/Widget.AppCompat.Spinner.Underlined"
         android:layout_alignParentTop="true"
         android:layout_centerHorizontal="true"/>
-
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_toRightOf="@id/graph"
+        android:text="Attempts"
+        android:id="@+id/attemptstitle"
+        android:layout_margin="16dp"
+        style="@style/TextAppearance.MaterialComponents.Headline6"
+        />
     <ListView
         android:id="@+id/listview"
-        android:layout_width="wrap_content"
+        android:layout_width="240dp"
         android:layout_height="match_parent"
         android:layout_marginBottom="16dp"
-        android:layout_alignParentRight="true"/>
+        android:layout_marginRight="16dp"
+        android:layout_alignParentRight="true"
+        android:layout_below="@id/attemptstitle"
+        android:visibility="visible"/>
 
 </RelativeLayout>
